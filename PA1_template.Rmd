@@ -1,25 +1,76 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible Research Course Project 1"
+output: html_document
 ---
+## Introduction
 
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the "quantified self" movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
 
-## Loading and preprocessing the data
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
 
+The file "activity.csv" contains the data analyzed in this project. The code below imports this data.
 
+```{r eval=TRUE, include=TRUE, echo=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(lattice)
+setwd("C:/Users/asala/Coursera/Reproducible Research")
+activity<-read.csv(file="activity.csv", header=TRUE, sep=",")
+activity$date <- as.Date(activity$date)
+```
 
-## What is mean total number of steps taken per day?
+## Analysis
 
+### What is mean total number of steps taken per day? 
+Answering this question requires summing the data over the duration of each day. The code below calculates the mean and median steps per day and produces a histogram of the daily steps.
 
+```{r eval=TRUE, include=TRUE, echo=TRUE}
+daily.steps<-aggregate(steps ~ date, data = activity, sum, na.rm = T)
+mean(daily.steps$steps)
+median(daily.steps$steps)
+hist(daily.steps$steps, main = "Total Steps by Day", xlab = "Steps", col = "red")
+```
 
-## What is the average daily activity pattern?
+### What is the average daily activity pattern? 
+Answering this question requires generating the mean number of steps over each time interval. The code below generates a time series plot (of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)) and determines Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps.
 
+```{r eval=TRUE, include=TRUE, echo=TRUE}
+increment.steps<-tapply(activity$steps, activity$interval, mean, na.rm = TRUE)
+plot(row.names(increment.steps), increment.steps, type = "l", xlab = "5-minute Interval", 
+    ylab = "Average across All Days", main = "Average Steps", 
+    col = "blue")
+max.interval <- which.max(increment.steps)
+names(max.interval)
+```
 
+### Imputing missing values
+Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r eval=TRUE, include=TRUE, echo=TRUE}
+activity.NA <- sum(is.na(activity))
+activity.NA
+```
 
-## Imputing missing values
+Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+```{r eval=TRUE, include=TRUE, echo=TRUE}
+activity.imputed<-activity
+activity.imputed$steps[is.na(activity.imputed$steps)] <- mean(activity.imputed$steps, na.rm = T)
+```
+Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+```{r eval=TRUE, include=TRUE, echo=TRUE}
+daily.steps.imputed<-rowsum(activity.imputed$steps, activity.imputed$date, na.rm = TRUE)
+mean(daily.steps.imputed)
+median(daily.steps.imputed)
+hist(daily.steps.imputed, main = "Total Steps by Day", xlab = "Steps", col = "red")
+```
 
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+###Are there differences in activity patterns between weekdays and weekends?
+Add a column to the data.frame to indicate weekday versus weekend.
+```{r eval=TRUE, include=TRUE, echo=TRUE}
+library(lubridate)
+activity.imputed$day<-weekdays(activity.imputed$date)
+activity.imputed$weekday[(activity.imputed$day=="Saturday" | activity.imputed$day=="Sunday")]<-"weekend"
+activity.imputed$weekday[!(activity.imputed$day=="Saturday" | activity.imputed$day=="Sunday")]<-"weekday"
+steps.day.type <- aggregate(steps ~ interval + weekday, data = activity.imputed, mean)
+xyplot(steps ~ interval | weekday, steps.day.type, type = "l", layout = c(1, 2), xlab = "Interval", ylab = "Number of steps")
+```
+The End
